@@ -2,14 +2,14 @@ library(MASS)
 
 ## Simulation setting ##
 
-path.cc <- "/nas/longleaf/home/fyy2025/survival_tree/lin_Ld_He_Ls/data/"
+path.cc <- "/nas/longleaf/home/fyy2025/survival_tree/lin_Ld_Me_Ls/data/"
 #path.cc <- "C:/Users/Haolin Li/Desktop/Dissertation/05_project2/02_simulation/05_RF/01_data/"
 gamma.weibull = 0.7
 p = 10
 n = 100
 nsim = 500
-tau = 100000
-cmax = 110000
+tau = 0.5
+cmax = 20
 cenc = rep(0, nsim)
 
 ## Data generation ##

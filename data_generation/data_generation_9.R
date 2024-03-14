@@ -8,8 +8,8 @@ gamma.weibull = 0.7
 p = 10
 n = 100
 nsim = 500
-tau = 800000
-cmax = 1000000
+tau = 200
+cmax = 500
 cenc = rep(0, nsim)
 
 ## Data generation ##

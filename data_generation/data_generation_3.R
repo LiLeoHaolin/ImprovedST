@@ -2,14 +2,14 @@ library(MASS)
 
 ## Simulation setting ##
 
-path.cc <- "/nas/longleaf/home/fyy2025/survival_tree/tree_Ld_He_Ls/data/"
+path.cc <- "/nas/longleaf/home/fyy2025/survival_tree/tree_300_50/data/"
 #path.cc <- "C:/Users/Haolin Li/Desktop/Dissertation/05_project2/02_simulation/05_RF/01_data/"
 gamma.weibull = 0.7
 p = 10
-n = 100
+n = 300
 nsim = 500
-tau = 200
-cmax = 225
+tau = 0.6
+cmax = 0.8
 cenc = rep(0, nsim)
 
 ## Data generation ##
@@ -60,7 +60,6 @@ for (j in 1:nsim){
   cat(j)
   X = as.matrix(mvrnorm(n = n, matrix(0, nrow = p, ncol = 1), ar1_cor(p, 0.6)))
   true.lin.pred <- 10*(0.3*(X[,1]>0) -0.2*(X[,2]<0)+0.3*(X[,4]<0)*(X[,6]<0)-0.4*(X[,7]>0)*(X[,3]>0))
-   
   v <- runif(n=n)
   Tlat <- (- log(v) / (1* exp(true.lin.pred)))^(1 / gamma.weibull)
   # C = Tlat

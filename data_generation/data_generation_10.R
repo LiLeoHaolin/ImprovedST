@@ -2,14 +2,14 @@ library(MASS)
 
 ## Simulation setting ##
 
-path.cc <- "/nas/longleaf/home/fyy2025/survival_tree/lin_300_50/data/"
+path.cc <- "/nas/longleaf/home/fyy2025/survival_tree/nl_Ld_Me_Ls/data/"
 #path.cc <- "C:/Users/Haolin Li/Desktop/Dissertation/05_project2/02_simulation/05_RF/01_data/"
 gamma.weibull = 0.7
 p = 10
-n = 300
+n = 100
 nsim = 500
-tau = 0.5
-cmax = 20
+tau = 0.8
+cmax = 1
 cenc = rep(0, nsim)
 
 ## Data generation ##
@@ -28,7 +28,6 @@ ar1_cor <- function(n, rho) {
 # true.lin.pred <- 10*(0.3*X[,1] -0.4*X[,2]+0.3*X[,4] -0.1*X[,6]-0.4*X[,7]+0.25*X[,3]+0.15*X[,8]+0.3*X[,9]-0.2*X[,10])
 # #nonlinear covariate
 # true.lin.pred <- 10*(0.3*X[,1] -0.2*X[,2]*X[,3]+0.3*X[,4]*X[,6]-0.4*X[,7]^3+0.1*X[,3]*X[,5]-0.25*X[,8]-0.3*X[,9]*X[,10]*X[,1])
-# 10*(0.3*X[,11] -0.4*X[,12]+0.3*X[,14] -0.1*X[,16]-0.4*X[,17]+0.25*X[,13]+0.15*X[,18]+0.3*X[,19]-0.2*X[,20])
 
 # low-dimensional tree-based DGP
 for (j in 1:nsim){
@@ -36,7 +35,7 @@ for (j in 1:nsim){
   X = as.matrix(mvrnorm(n = n, matrix(0, nrow = p, ncol = 1), ar1_cor(p, 0.6))) #mvrnorm: multivariate normal dist
   #mu: a vector of 0 with length p-- means of variables
   #Sigma: a positive-definite symmetric matrix specifying the covariance matrix of the variables.
-  true.lin.pred <- 10*(0.3*X[,1] -0.4*X[,2]+0.3*X[,4] -0.1*X[,6]-0.4*X[,7]+0.25*X[,3]+0.15*X[,8]+0.3*X[,9]-0.2*X[,10])
+  true.lin.pred <- 10*(0.03*X[,1] -0.02*X[,2]*X[,3]+0.03*X[,4]*X[,6]-0.4*X[,7]^3+0.1*X[,3]*X[,5]-0.025*X[,8]-0.3*X[,9]*X[,10]*X[,1])
   v <- runif(n=n)
   Tlat <- (- log(v) / (1* exp(true.lin.pred)))^(1 / gamma.weibull)
   # C = Tlat
@@ -59,7 +58,7 @@ mean(cenc) # output censoring proportion
 for (j in 1:nsim){
   cat(j)
   X = as.matrix(mvrnorm(n = n, matrix(0, nrow = p, ncol = 1), ar1_cor(p, 0.6)))
-  true.lin.pred <- 10*(0.3*X[,1] -0.4*X[,2]+0.3*X[,4] -0.1*X[,6]-0.4*X[,7]+0.25*X[,3]+0.15*X[,8]+0.3*X[,9]-0.2*X[,10])
+  true.lin.pred <- 10*(0.03*X[,1] -0.02*X[,2]*X[,3]+0.03*X[,4]*X[,6]-0.4*X[,7]^3+0.1*X[,3]*X[,5]-0.025*X[,8]-0.3*X[,9]*X[,10]*X[,1])
   v <- runif(n=n)
   Tlat <- (- log(v) / (1* exp(true.lin.pred)))^(1 / gamma.weibull)
   # C = Tlat
