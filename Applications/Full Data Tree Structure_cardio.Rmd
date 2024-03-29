@@ -1,0 +1,446 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+library(intsurv)
+library(survminer)
+library(survival)
+library(readr)
+library(randomForestSRC)
+library(ranger)
+library(alabama)
+library(dplyr)
+```
+
+```{r}
+lung = read_csv("/Users/Haolin Li/Desktop/tree/03_applications/S1Data.csv")
+tau = max(lung$time)
+tau
+sum(subset(lung,time<250)$status==1)/nrow(subset(lung,time<250))
+nrow(subset(lung,status==0))
+```
+
+```{r}
+structure=TRUE
+model1=ranger(Surv(time, status) ~ .,data=lung,num.tree=500,mtry=ncol(lung)-2,splitrule = "logrank", min.node.size = 50)
+
+set.seed(109) # seed 109, num_leaf=4, min leaf size=13
+# seed 7305, min leaf size=11
+
+model2=ranger(Surv(time, status) ~ .,data=lung,num.tree=1,mtry=ncol(lung)-2,splitrule = "logrank", min.node.size = 50) # sample without rep
+# model2=rfsrc(Surv(time, status) ~ ., data=lung, mtry=ncol(lung)-2,sampsize=nrow(lung),nsplit=0,ntree=1) # sample without rep
+
+predict2=predict(model2, data=lung)
+chf_time=predict2$unique.death.times
+chf_value=predict2$chf
+
+leaf <- list() #create a list for the first four CHF curves
+leaf[[1]] <- chf_value[1,]
+leaf_allocation <- list()
+leaf_allocation[[1]] <- c(1)
+group=rep(NA,nrow(lung)) #create a dictionary to reflect which group each observation is in
+group[1]=1
+
+#categorize the initial chf function for each leaf
+for (i in 2:nrow(lung)) {
+  found <- 0
+  for (j in 1:length(leaf)) {
+    if (all(chf_value[i,] == leaf[[j]])) {
+      leaf_allocation[[j]] <- c(leaf_allocation[[j]], i)
+      found <- 1
+      group[i]=j
+    }
+  }
+  if (found == 0) {
+    leaf[[length(leaf) + 1]] <- chf_value[i,]
+    leaf_allocation[[length(leaf_allocation) + 1]] <- i
+    group[i]=length(leaf_allocation)
+  }
+}
+
+# find the leaf with the least observation
+# print(min(table(group)))
+
+# treeInfo(model2,1)
+leaf_size=as.vector(table(group))
+single_leaf=as.vector(which(leaf_size<=2))
+normal_leaf=as.vector(which(leaf_size>2))
+
+reassign_dict=as.vector(1:length(leaf))
+for (i in 1:length(single_leaf)){
+  new_assignment=sample(normal_leaf,1)
+  group[which(group==single_leaf[i])]=new_assignment
+  reassign_dict[single_leaf[i]]=new_assignment
+}
+
+# print(min(table(group)))
+# print(table(group))
+num_leaf=length(table(group))
+loose_group=as.numeric(names(table(group)))
+for (i in 1:length(group)){
+  group[i]=which(loose_group==group[i])
+}
+for (i in 1:length(leaf)){
+  reassign_dict[i]=which(loose_group==reassign_dict[i])
+}
+# print(table(group))
+
+num_leaf=length(table(group))
+# print(leaf_allocation)
+# print(group)
+
+# keep the first group allocation for phase diagram
+first_group=group
+
+#create overall lists of chf function x and y values
+chf_value_dict=list(leaf) # a list of lists of chf values
+time=list()
+for (i in 1:num_leaf){
+  time[[i]]=chf_time
+}
+time_dict=list(time) # a list of lists of time points
+
+if (min(table(group))>=2){
+  fold=10
+  sampleframe = rep(1:fold, ceiling( nrow(lung)/fold ) )
+  CV_index=sample(sampleframe,nrow(lung) ,  replace=FALSE )
+  # CV_index=rep(1:10,nrow(lung)/10)
+  CV_losses=list()
+}else{
+  fold=nrow(lung)
+  CV_index=1:nrow(lung)
+  CV_losses=list()
+}
+step_count=nrow(lung)/fold
+
+row_time=rep(NA,nrow(lung))
+row_event=rep(NA,nrow(lung))
+risk_score=list()
+for (i in 1:num_leaf){
+  risk_score[[i]]=rep(NA,nrow(lung))
+}
+
+current=0
+# CV to find the optimal parameters to ensemble
+for (step in 1:fold){
+  CV_test=lung[CV_index==step,]
+  CV_lung=lung[CV_index!=step,]
+  group=first_group[CV_index!=step] # if 10-fold, drop 10 elements in group
+  if (length(table(group))!=num_leaf){
+    structure=FALSE
+    break
+  }
+  
+  predict2=predict(model2, data=CV_lung)
+  # chf_time=predict2$unique.death.times
+  # chf_value=predict2$chf
+  
+  lung_set=cbind(CV_lung,group)
+  # Perform the log-rank test
+  
+  result=tryCatch(
+    expr={
+      pairwise_survdiff(Surv(time, status)~group, data=lung_set)
+    },
+    error = function(e) {
+      #what should be done in case of exception?
+      
+      message("There was an error message.") # prints structure of exception
+      return(list(NULL))
+    }
+  )
+  
+  if (length(result)==1){
+    structure=FALSE
+    break
+  }
+  result=pairwise_survdiff(Surv(time, status)~group, data=lung_set)
+  
+  pvalue=result$p.value
+  index=which(pvalue == max(pvalue,na.rm=T), arr.ind = TRUE)
+  row=as.integer(rownames(pvalue)[index[1,1]])
+  col=as.integer(colnames(pvalue)[index[1,2]])
+  
+  result_combined_2=survfit(Surv(time,status)~1, type = "fleming-harrington",data=subset(lung_set,group%in%c(row,col)))
+  
+  chf_value_combined_2=result_combined_2$cumhaz
+  chf_time_combined_2=result_combined_2$time
+  
+  dict=as.vector(1:num_leaf)
+  group_dict=list(dict)
+  
+  if (num_leaf>1){
+    for (i in 2:(num_leaf)){
+      #record the current chf function value and time
+      chf=chf_value_dict[[i-1]]
+      time=time_dict[[i-1]]
+      for (j in 1:num_leaf){
+        if (group_dict[[i-1]][j]%in%c(row,col)){
+          chf[[j]]=result_combined_2$cumhaz
+          time[[j]]=result_combined_2$time
+        }
+      }
+      
+      chf_value_dict[[i]]=chf
+      time_dict[[i]]=time
+      
+      #update the group assignment and decide the next combination
+      
+      group=ifelse(group%in%c(row,col), min(row,col), group)
+      #print(paste0("Combine group ",row," and ",col," into group ",min(row,col)))
+      
+      for (ii in 1:num_leaf){
+        if (dict[ii]==max(row,col)){
+          dict[ii]=min(row,col)
+        }
+      }
+      group_dict[[i]]=dict
+      
+      if (i != num_leaf){
+        lung_2=cbind(CV_lung,group)
+        result=pairwise_survdiff(Surv(time, status)~group, data=lung_2)
+        pvalue=result$p.value
+        index=which(pvalue == max(pvalue,na.rm=T), arr.ind = TRUE)
+        row=as.integer(rownames(pvalue)[index[1,1]])
+        col=as.integer(colnames(pvalue)[index[1,2]])
+        
+        result_combined_2=survfit(Surv(time,status)~1, type = "fleming-harrington",data=subset(lung_2,group%in%c(row,col)))
+      }
+    }
+  } # end of fitting the trees
+  # print(nrow(subset(lung_2,group%in%c(row,col))))
+  # print(row)
+  # print(col)
+  # print("Next")
+  
+  test_predict=predict(model2, data=CV_test)
+  chf_predict=test_predict$chf
+  test_group=rep(NA,nrow(CV_test))
+  
+  for (i in 1:nrow(CV_test)) {
+    for (j in 1:length(leaf)) {
+      if (all(chf_predict[i,] == leaf[[j]])) {
+        test_group[i]=reassign_dict[j]
+      }
+    }
+  }
+  
+  for (j in 1:nrow(CV_test)){
+    row_time[current+j]=CV_test$time[j]
+    row_event[current+j]=CV_test$status[j]
+    for (i in 1:num_leaf){
+      value=chf_value_dict[[i]][[test_group[j]]]
+      time=time_dict[[i]][[test_group[j]]]
+      
+      index=length(time) # find the index of the largest time value smaller than t
+      while(tau<time[index] && index>1){
+        index=index-1
+      }
+      risk_score[[i]][(step-1)*step_count+j]=1-exp(-value[index])
+      
+    }
+    
+  }
+  current=current+nrow(CV_test)
+}
+
+# cv_c_index=rep(0,num_leaf)
+# for (i in 1:num_leaf){
+#   cv_c_index[i]=cIndex(row_time,row_event,as.vector(risk_score[[i]]))[1]
+# }
+# # cv_c_index
+
+if (structure==FALSE){
+  next
+}
+
+
+fn=function(x){
+  result=0
+  for (i in 1:num_leaf){
+    result=result+x[i]*risk_score[[i]]
+  }
+  fn=cIndex(row_time,row_event,as.vector(result))[1]
+  
+  fn
+}
+
+heq=function(x){
+  h=rep(0,1)
+  for (i in 1:num_leaf){
+    h[1]=h[1]+x[i]
+  }
+  h[1]=h[1]-1
+  h
+}
+
+hin=function(x){
+  h=rep(NA,1)
+  for (i in 1:num_leaf){
+    h[i]=x[i]
+  }
+  h
+}
+
+set.seed(1111)
+p0=runif(num_leaf)
+ans=constrOptim.nl(par=p0, fn=fn, heq=heq, hin=hin)
+ans$par
+
+parameter=ans$par/sum(ans$par)
+```
+
+Now fit the model on full data to get nested tree sequence
+```{r}
+# Use the full group
+
+predict2=predict(model2, data=lung)
+chf_time=predict2$unique.death.times
+chf_value=predict2$chf
+
+for (i in 1:nrow(lung)) {
+  for (j in 1:length(leaf)) {
+    if (all(chf_value[i,] == leaf[[j]])) {
+      group[i]=reassign_dict[j]
+    }
+  }
+}
+
+chf_value_dict=list(leaf) # a list of lists of chf values
+time=list()
+for (i in 1:num_leaf){
+  time[[i]]=chf_time
+}
+time_dict=list(time) # a list of lists of time points
+
+train_set=cbind(lung,group)
+
+# Perform the log-rank test
+result <- pairwise_survdiff(Surv(time, status)~group, data=train_set)
+
+pvalue=result$p.value
+index=which(pvalue == max(pvalue,na.rm=T), arr.ind = TRUE)
+row=as.integer(rownames(pvalue)[index[1,1]])
+col=as.integer(colnames(pvalue)[index[1,2]])
+
+result_combined_2=survfit(Surv(time,status)~1, type = "fleming-harrington",data=subset(train_set,group%in%c(row,col)))
+
+chf_value_combined_2=result_combined_2$cumhaz
+chf_time_combined_2=result_combined_2$time
+
+dict=as.vector(1:num_leaf)
+group_dict=list(dict)
+
+if (num_leaf>1){
+  for (i in 2:(num_leaf)){
+    #record the current chf function value and time
+    chf=chf_value_dict[[i-1]]
+    time=time_dict[[i-1]]
+    for (j in 1:num_leaf){
+      if (group_dict[[i-1]][j]%in%c(row,col)){
+        chf[[j]]=result_combined_2$cumhaz
+        time[[j]]=result_combined_2$time
+      }
+    }
+    
+    chf_value_dict[[i]]=chf
+    time_dict[[i]]=time
+    
+    #update the group assignment and decide the next combination
+    
+    group=ifelse(group%in%c(row,col), min(row,col), group)
+    #print(paste0("Combine group ",row," and ",col," into group ",min(row,col)))
+    
+    for (ii in 1:num_leaf){
+      if (dict[ii]==max(row,col)){
+        dict[ii]=min(row,col)
+      }
+    }
+    group_dict[[i]]=dict
+    
+    if (i != num_leaf){
+      train_2=cbind(lung,group)
+      result=pairwise_survdiff(Surv(time, status)~group, data=train_2)
+      pvalue=result$p.value
+      index=which(pvalue == max(pvalue,na.rm=T), arr.ind = TRUE)
+      row=as.integer(rownames(pvalue)[index[1,1]])
+      col=as.integer(colnames(pvalue)[index[1,2]])
+      
+      result_combined_2=survfit(Surv(time,status)~1, type = "fleming-harrington",data=subset(train_2,group%in%c(row,col)))
+    }
+  }
+} # end of fitting the trees
+```
+
+```{r}
+treeInfo(model2)
+reassign_dict
+```
+
+```{r}
+leaf_node_dict=rep(0,num_leaf)
+for (i in 1:num_leaf){
+  obs=leaf_allocation[[i]][1]
+  leaf_node_dict[i]=getTerminalNodeIDs(model2,lung)[obs]
+}
+leaf_node_dict
+```
+
+
+
+* Draw the survival curve for each leaf in the initial tree
+```{r}
+#avoiding tail distribution error
+tau=250
+prob=list()
+num_interval=400
+terminal=4
+
+for (i in 1:num_leaf){
+  prob[[i]]=rep(0,num_interval)
+  for (k in 1:num_interval){
+    t = tau/num_interval*k
+    index=length(time_dict[[i]][[terminal]]) # find the index of the largest time value smaller than t
+    while(t<time_dict[[i]][[terminal]][index] && index>1){
+      index=index-1
+    }
+    prob[[i]][k]=exp(-chf_value_dict[[i]][[terminal]][index])
+    }
+}
+
+result=rep(0,num_interval)
+for (i in 1:num_leaf){
+  result=result+parameter[i]*prob[[i]]
+}
+
+par(mfrow = c(1, 1))  # Set the number of rows and columns for plots
+par(plt = c(0.3, 0.6, 0.2, 0.85))  # Set margins for the plot
+plot(seq(tau/num_interval,tau,tau/num_interval),result,type="l",xlab="Time", ylab="Survival Probability",ylim=c(0,1),main="Terminal Node 2")
+```
+
+
