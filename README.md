@@ -11,7 +11,6 @@ This repository contains computing codes for the paper "Improving the within-Nod
 ### 1-Data Generation
 
 In this folder, we summarize the computing codes for generating survival data following a Weibull hazard model. The names of the code and the corresponding simulation scenarios in the paper are as follows,
-(simulated data structure)
 
 * *data_generation_1.r* - tree-based effect, 100 sample size, 80% event rate.
 * *data_generation_2.r* - tree-based effect, 100 sample size, 50% event rate.
@@ -29,7 +28,6 @@ In this folder, we summarize the computing codes for generating survival data fo
 ### 2-Analysis
 
 In this folder, we summarize the computing codes for fitting the proposed survival tree ensemble method and comparing the concordance index with single tree approach. The names and descriptions of the files are as follows,
-(input data structure, output)
 
 * *analysis_1.r* - tree-based effect, 100 sample size, 80% event rate.
 * *analysis_2.r* - tree-based effect, 100 sample size, 50% event rate.
