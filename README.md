@@ -51,9 +51,10 @@ In this folder, we include the datasets and computing code used to illustrate th
 * *lung.csv* - a cleaned version of North Central Cancer Treatment Group Lung Cancer Data, which is publically available in the R package `survival' (Therneau and Lumley, 2013).
 * *Full Data Tree Structure_lung.r* - the computing code for analyzing North Central Cancer Treatment Group Lung Cancer Data.
 * *S1Data.csv* - a cleaned version of Cardiovascular Medical Records from the Faisalabad Institute of Cardiology, which is publically available (Chicco and Jurman, 2020).
+* *Full Data Tree Structure_cardio.r* - the computing code for analyzing Cardiovascular Medical Records from the Faisalabad Institute of Cardiology.
 
 ## References
 
-Fan, Y., Li, H., & Cai, J. (2024+). Improving the within-Node Estimation of Survival Trees while Retaining Interpretability. Manuscript Submitted for Publication.
-Therneau, T., & Lumley, T. (2013). R survival package. R Core Team, 523.
-Chicco, D., & Jurman, G. (2020). Machine learning can predict survival of patients with heart failure from serum creatinine and ejection fraction alone. BMC medical informatics and decision making, 20, 1-16.
+* Li, H., Fan, Y., & Cai, J. (2024+). Improving the within-Node Estimation of Survival Trees while Retaining Interpretability. Manuscript Submitted for Publication.
+* Therneau, T., & Lumley, T. (2013). R survival package. R Core Team, 523.
+* Chicco, D., & Jurman, G. (2020). Machine learning can predict survival of patients with heart failure from serum creatinine and ejection fraction alone. BMC medical informatics and decision making, 20, 1-16.
