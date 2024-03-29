@@ -44,6 +44,16 @@ In this folder, we summarize the computing codes for fitting the proposed surviv
 * *analysis_11.r* - nonlinear covariate effect, 300 sample size, 50% event rate.
 * *analysis_12.r* - nonlinear covariate effect, 300 sample size, 20% event rate.
 
+### 3-Applications
+
+In this folder, we include the datasets and computing code used to illustrate the application of the proposed method.
+
+* *lung.csv* - a cleaned version of North Central Cancer Treatment Group Lung Cancer Data, which is publically available in the R package `survival' (Therneau and Lumley, 2013).
+* *Full Data Tree Structure_lung.r* - the computing code for analyzing North Central Cancer Treatment Group Lung Cancer Data.
+* *S1Data.csv* - a cleaned version of Cardiovascular Medical Records from the Faisalabad Institute of Cardiology, which is publically available (Chicco and Jurman, 2020).
+
 ## References
 
-Fan, Y., Li, H., Cai, J. (2024+). Improving the within-Node Estimation of Survival Trees while Retaining Interpretability. Manuscript Submitted for Publication.
+Fan, Y., Li, H., & Cai, J. (2024+). Improving the within-Node Estimation of Survival Trees while Retaining Interpretability. Manuscript Submitted for Publication.
+Therneau, T., & Lumley, T. (2013). R survival package. R Core Team, 523.
+Chicco, D., & Jurman, G. (2020). Machine learning can predict survival of patients with heart failure from serum creatinine and ejection fraction alone. BMC medical informatics and decision making, 20, 1-16.
